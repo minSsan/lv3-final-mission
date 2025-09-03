@@ -1,0 +1,53 @@
+name: dev-cd
+
+on:
+  push:
+    branches: ["minssan-develop"]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push image (latest)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_REPO }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: [ self-hosted, Linux, dev ]
+    env:
+      IMAGE_NAME: ${{ secrets.DOCKERHUB_REPO }}
+      CONTAINER_NAME: lv3-final-dev
+      PORT: "8080"
+      ENV_FILE: /home/ubuntu/.env
+    steps:
+      - name: Create .env file
+        run: |
+          cat <<EOF > $ENV_FILE
+          DEV_DATASOURCE_URL=${{ secrets.DEV_DATASOURCE_URL }}
+          DEV_DATASOURCE_USERNAME=${{ secrets.DEV_DATASOURCE_USERNAME }}
+          DEV_DATASOURCE_PASSWORD=${{ secrets.DEV_DATASOURCE_PASSWORD }}
+          SPRING_PROFILES_ACTIVE=dev
+          EOF
+
+      - name: Pull new image
+        run: docker pull $IMAGE_NAME:latest
+
+      - name: Stop & Remove old container if exists
+        run: docker rm -f $CONTAINER_NAME || true
+
+      - name: Run new container
+        run: |
+          docker run -d --name $CONTAINER_NAME --restart unless-stopped \
+            --env-file $ENV_FILE -p ${PORT}:8080 \
+            $IMAGE_NAME:latest
