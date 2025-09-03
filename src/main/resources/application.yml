@@ -1,0 +1,21 @@
+spring:
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  datasource:
+    url: jdbc:h2:mem:database
+
+security:
+  jwt:
+    token:
+      secret-key: Yn2kjibddFAWtnPJ2AFlL8WXmohJMCvigQggaEypa5E=
+      expire-length: 36000000 # 60 minutes
+
+api:
+  randommer:
+    api-key: 929e823be2f34ac09cfa5cf419b5e790
